@@ -1,0 +1,14 @@
+{
+  "name": "Vicdock",
+  "dockerComposeFile": "../docker-compose.yml",
+  "remoteUser": "vicdock",
+  "runServices": [
+    "nginx",
+    "postgres",
+    "pgadmin"
+  ],
+  "service": "workspace",
+  "workspaceFolder": "/var/www",
+  "shutdownAction": "stopCompose",
+  "postCreateCommand": "uname -a"
+}
