@@ -1,0 +1,2 @@
+# vicdock
+vicdock WORKSPACE docker
