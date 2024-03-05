@@ -4,17 +4,17 @@
 #--------------------------------------------------------------------------
 #
 # To edit the 'workspace' base Image, visit its repository on Github
-#    https://github.com/Vicdock/workspace
+#    https://github.com/laradock/workspace
 #
 # To change its version, see the available Tags on the Docker Hub:
-#    https://hub.docker.com/r/vicdock/workspace/tags/
+#    https://hub.docker.com/r/laradock/workspace/tags/
 #
 # Note: Base Image name format {image-tag}-{php-version}
 #
 
 ARG VICDOCK_PHP_VERSION
 ARG BASE_IMAGE_TAG_PREFIX=latest
-FROM vicdock/workspace:${BASE_IMAGE_TAG_PREFIX}-${VICDOCK_PHP_VERSION}
+FROM laradock/workspace:${BASE_IMAGE_TAG_PREFIX}-${VICDOCK_PHP_VERSION}
 
 LABEL maintainer="Mahmoud Zalt <mahmoud@zalt.me>"
 
@@ -64,9 +64,9 @@ RUN set -xe; \
       # Mandatory Software's such as ("php-cli", "git", "vim", ....) are
       # installed on the base image 'vicdock/workspace' image. If you want
       # to add more Software's or remove existing one, you need to edit the
-      # base image (https://github.com/Vicdock/workspace).
+      # base image (https://github.com/laradock/workspace).
       #
-      # next lines are here because there is no auto build on dockerhub see https://github.com/vicdock/vicdock/pull/1903#issuecomment-463142846
+      # next lines are here because there is no auto build on dockerhub see https://github.com/laradock/laradock/pull/1903#issuecomment-463142846
       libzip-dev zip unzip \
       # Install the zip extension
       php${VICDOCK_PHP_VERSION}-zip \

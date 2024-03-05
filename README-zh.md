@@ -65,7 +65,7 @@ Vicdock 努力简化创建开发环境过程。
 
 1. 将 Vicdock 放到你的 Laravel 项目中：
 ```bash
-git clone https://github.com/vicdock/vicdock.git
+git clone https://github.com/laradock/laradock.git
 ```
 
 2. 进入 Vicdock 目录

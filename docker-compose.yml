@@ -2164,3 +2164,22 @@ services:
       networks:
         - frontend
         - backend
+
+  ### oracle 19.3 ##################################################
+    oracle19c:
+      image: container-registry.oracle.com/database/enterprise:19.3.0.0
+      # build:
+      #   context: ./oracle19c/Dockerfile
+      #   dockerfile: Dockerfile
+      ports:
+        - "1521:1521"
+        - "5500:5500"
+      environment:
+        - ORACLE_ALLOW_REMOTE=true
+        - ORACLE_PWD=Password$123
+      volumes:
+      - ${DATA_PATH_HOST}/oracle/data:/var/opt/oracle/oradata
+      networks:
+        - frontend
+        - backend
+      restart: always

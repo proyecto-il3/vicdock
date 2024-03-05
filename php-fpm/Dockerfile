@@ -4,17 +4,17 @@
 #--------------------------------------------------------------------------
 #
 # To edit the 'php-fpm' base Image, visit its repository on Github
-#    https://github.com/Vicdock/php-fpm
+#    https://github.com/laradock/php-fpm
 #
 # To change its version, see the available Tags on the Docker Hub:
-#    https://hub.docker.com/r/vicdock/php-fpm/tags/
+#    https://hub.docker.com/r/laradock/php-fpm/tags/
 #
 # Note: Base Image name format {image-tag}-{php-version}
 #
 
 ARG VICDOCK_PHP_VERSION
 ARG BASE_IMAGE_TAG_PREFIX=latest
-FROM vicdock/php-fpm:${BASE_IMAGE_TAG_PREFIX}-${VICDOCK_PHP_VERSION}
+FROM laradock/php-fpm:${BASE_IMAGE_TAG_PREFIX}-${VICDOCK_PHP_VERSION}
 
 LABEL maintainer="Mahmoud Zalt <mahmoud@zalt.me>"
 
@@ -49,9 +49,9 @@ RUN set -xe; \
       # Mandatory Software's such as ("mcrypt", "pdo_mysql", "libssl-dev", ....)
       # are installed on the base image 'vicdock/php-fpm' image. If you want
       # to add more Software's or remove existing one, you need to edit the
-      # base image (https://github.com/Vicdock/php-fpm).
+      # base image (https://github.com/laradock/php-fpm).
       #
-      # next lines are here becase there is no auto build on dockerhub see https://github.com/vicdock/vicdock/pull/1903#issuecomment-463142846
+      # next lines are here becase there is no auto build on dockerhub see https://github.com/laradock/laradock/pull/1903#issuecomment-463142846
       libzip-dev zip unzip && \
       if [ ${VICDOCK_PHP_VERSION} = "7.3" ] || [ ${VICDOCK_PHP_VERSION} = "7.4" ] || [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ]; then \
         docker-php-ext-configure zip; \
