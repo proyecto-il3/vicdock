@@ -2166,8 +2166,10 @@ services:
         - backend
 
   ### oracle 19.3 ##################################################
-    oracle19c:
+
+    oracle:
       image: container-registry.oracle.com/database/enterprise:19.3.0.0
+      container_name: oracle_database
       # build:
       #   context: ./oracle19c/Dockerfile
       #   dockerfile: Dockerfile
@@ -2176,10 +2178,13 @@ services:
         - "5500:5500"
       environment:
         - ORACLE_ALLOW_REMOTE=true
+        - ORACLE_SID=ORCL
+        - ORACLE_PDB=PDB1
         - ORACLE_PWD=Password$123
       volumes:
-      - ${DATA_PATH_HOST}/oracle/data:/var/opt/oracle/oradata
+        - ./oracle-init:/opt/oracle/scripts/setup
+        - ${DATA_PATH_HOST}/oracle/data:/var/opt/oracle/oradata
       networks:
         - frontend
         - backend
-      restart: always
+      # restart: always

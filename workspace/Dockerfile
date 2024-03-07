@@ -937,53 +937,177 @@ RUN set -xe; \
 # PHP OCI8:
 ###########################################################################
 
-USER root
-ARG INSTALL_OCI8=false
-ARG ORACLE_INSTANT_CLIENT_MIRROR=https://github.com/the-paulus/oracle-instantclient/raw/master/
-ARG ORACLE_INSTANT_CLIENT_ARCH=x86_64
-ARG ORACLE_INSTANT_CLIENT_MAJOR=18
-ARG ORACLE_INSTANT_CLIENT_MINOR=3
+# Oracle Instant Client Download links
+# https://www.oracle.com/database/technologies/instant-client/downloads.html
+ENV INSTANTCLIENT "https://download.oracle.com/otn_software/linux/instantclient/2112000/instantclient-basic-linux.x64-21.12.0.0.0dbru.zip"
+ENV INSTANTCLIENT_SDK "https://download.oracle.com/otn_software/linux/instantclient/2112000/instantclient-sdk-linux.x64-21.12.0.0.0dbru.zip"
+ENV SQLPLUS "https://download.oracle.com/otn_software/linux/instantclient/2112000/instantclient-sqlplus-linux.x64-21.12.0.0.0dbru.zip"
 
-ENV ORACLE_INSTANT_CLIENT_VERSION=${ORACLE_INSTANT_CLIENT_MAJOR}_${ORACLE_INSTANT_CLIENT_MINOR}
-ENV LD_LIBRARY_PATH="/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}"
-ENV OCI_HOME="/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}"
-ENV OCI_LIB_DIR="/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}"
-ENV OCI_INCLUDE_DIR="/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/sdk/include"
-ENV OCI_VERSION=${ORACLE_INSTANT_CLIENT_MAJOR}
+# Oracle Instant Client ENV Variables
+ENV LD_LIBRARY_PATH "/opt/oracle/instantclient"
+ENV PATH "$PATH:$LD_LIBRARY_PATH"
+ENV OCI_HOME="/opt/oracle/instantclient"
+ENV OCI_LIB_DIR="/opt/oracle/instantclient"
+ENV OCI_INCLUDE_DIR="/opt/oracle/instantclient/sdk/include"
+ENV OCI_VERSION="21.12"
 
-RUN if [ ${INSTALL_OCI8} = true ]; then \
-  # Install wget
-  apt-get update && apt-get install --no-install-recommends -y wget \
-  # Install Oracle Instantclient
-  && mkdir /opt/oracle \
-      && cd /opt/oracle \
-      && wget ${ORACLE_INSTANT_CLIENT_MIRROR}instantclient-basic-linux.${ORACLE_INSTANT_CLIENT_ARCH}-${ORACLE_INSTANT_CLIENT_VERSION}.zip \
-      && wget ${ORACLE_INSTANT_CLIENT_MIRROR}instantclient-sdk-linux.${ORACLE_INSTANT_CLIENT_ARCH}-${ORACLE_INSTANT_CLIENT_VERSION}.zip \
-      && unzip /opt/oracle/instantclient-basic-linux.${ORACLE_INSTANT_CLIENT_ARCH}-${ORACLE_INSTANT_CLIENT_VERSION}.zip -d /opt/oracle \
-      && unzip /opt/oracle/instantclient-sdk-linux.${ORACLE_INSTANT_CLIENT_ARCH}-${ORACLE_INSTANT_CLIENT_VERSION}.zip -d /opt/oracle \
-      && if [ ${OCI_VERSION} -lt 18 ] ; then ln -s /opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/libclntsh.so.${ORACLE_INSTANT_CLIENT_MAJOR}.${ORACLE_INSTANT_CLIENT_MINOR} /opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/libclntsh.so ; fi\
-      && if [ ${OCI_VERSION} -lt 18 ] ; then ln -s /opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/libclntshcore.so.${ORACLE_INSTANT_CLIENT_MAJOR}.${ORACLE_INSTANT_CLIENT_MINOR} /opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/libclntshcore.so ; fi \
-      && if [ ${OCI_VERSION} -lt 18 ] ; then ln -s /opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/libocci.so.${ORACLE_INSTANT_CLIENT_MAJOR}.${ORACLE_INSTANT_CLIENT_MINOR} /opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/libocci.so ; fi \
-      && rm -rf /opt/oracle/*.zip \
-  # Install PHP extensions deps
-  && apt-get update \
-      && apt-get install --no-install-recommends -y \
-          libaio-dev && \
-  # Install PHP extensions
-  if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
-  echo 'instantclient,/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/' | pecl install oci8-2.0.12; \
-  elif [ $(php -r "echo PHP_MAJOR_VERSION;") = "7" ]; then \
-  echo 'instantclient,/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/' | pecl install oci8-2.2.0; \
-  elif [ $(php -r "echo PHP_VERSION_ID - PHP_RELEASE_VERSION;") = "80000" ]; then \
-    echo "instantclient,/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/" | pecl install oci8-3.0.1; \
-  elif [ $(php -r "echo PHP_MAJOR_VERSION . PHP_MINOR_VERSION;") = "81" ]; then \
-    echo "instantclient,/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/" | pecl install oci8-3.2.1; \
-  else \
-    echo "instantclient,/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/" | pecl install oci8; \
-  fi \
-  && echo "extension=oci8.so" >> /etc/php/${VICDOCK_PHP_VERSION}/cli/php.ini \
-  && php -m | grep -q 'oci8' \
-;fi
+
+# Install Oracle Instant Client Libraries
+# https://docs.oracle.com/en/database/oracle/oracle-database/21/lacli/install-instant-client-using-zip.html
+RUN apt-get update && apt-get install -y unzip libaio1
+RUN cd /tmp \ 
+    && curl -L $INSTANTCLIENT -O \
+    && unzip /tmp/instantclient*.zip -d /opt/oracle/ \
+    && rm /tmp/instantclient*.zip \
+    && mv /opt/oracle/instantclient_* /opt/oracle/instantclient \
+    && echo /opt/oracle/instantclient > /etc/ld.so.conf.d/oracleinstantclient.conf \
+    && ldconfig
+RUN cd /tmp \
+    && curl -L $INSTANTCLIENT_SDK -O \
+    && unzip /tmp/instantclient-sdk*.zip -d /opt/oracle/ \
+    && rm /tmp/instantclient*.zip \
+    && mv /opt/oracle/instantclient_*/* /opt/oracle/instantclient
+RUN cd /tmp \
+    && curl -L $SQLPLUS -O \
+    && unzip /tmp/instantclient-sqlplus*.zip -d /opt/oracle/ \
+    && rm /tmp/instantclient*.zip \
+    && mv /opt/oracle/instantclient_*/* /opt/oracle/instantclient
+RUN rmdir /opt/oracle/instantclient_*
+
+# Add custom PHP extensions/libraries
+# Install OCI8 Extension
+# https://pecl.php.net/package/oci8
+RUN echo 'instantclient,/opt/oracle/instantclient' | pecl install oci8-3.2.1
+    # && echo "extension=oci8.so" >> /etc/php/${VICDOCK_PHP_VERSION}/cli/php.ini \
+    # php -m | grep -q 'oci8'
+# USER root
+# ARG INSTALL_OCI8=false
+# ARG ORACLE_INSTANT_CLIENT_MIRROR=https://github.com/the-paulus/oracle-instantclient/raw/master/
+# ARG ORACLE_INSTANT_CLIENT_MIRROR_BASIC=https://download.oracle.com/otn_software/linux/instantclient/1922000/instantclient-basic-linux.x64-19.22.0.0.0dbru.zip
+# ARG ORACLE_INSTANT_CLIENT_MIRROR_SDK=https://download.oracle.com/otn_software/linux/instantclient/1922000/instantclient-sdk-linux.x64-19.22.0.0.0dbru.zip
+
+# ARG ORACLE_INSTANT_CLIENT_ARCH=x86_64
+# ARG ORACLE_INSTANT_CLIENT_MAJOR=19
+# ARG ORACLE_INSTANT_CLIENT_MINOR=3
+
+# ENV ORACLE_INSTANT_CLIENT_VERSION=${ORACLE_INSTANT_CLIENT_MAJOR}_${ORACLE_INSTANT_CLIENT_MINOR}
+# ENV LD_LIBRARY_PATH="/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}"
+# ENV OCI_HOME="/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}"
+# ENV OCI_LIB_DIR="/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}"
+# ENV OCI_INCLUDE_DIR="/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/sdk/include"
+# ENV OCI_VERSION=${ORACLE_INSTANT_CLIENT_MAJOR}
+
+# RUN if [ ${INSTALL_OCI8} = true ]; then \
+#   # Install wget
+#   apt-get update && apt-get install --no-install-recommends -y wget \
+#   # Install Oracle Instantclient
+#   && mkdir /opt/oracle \
+#       && cd /opt/oracle \
+#   ;fi
+
+# RUN if [ ${INSTALL_OCI8} = true ]; then \
+#   # Install Oracle Instantclient
+#   cd /opt/oracle \
+#       && wget ${ORACLE_INSTANT_CLIENT_MIRROR_BASIC} \
+#       && wget ${ORACLE_INSTANT_CLIENT_MIRROR_SDK} \
+#   ;fi
+  
+# RUN if [ ${INSTALL_OCI8} = true ]; then \
+#   # Install Oracle Instantclient
+#   cd /opt/oracle \
+#       && unzip /opt/oracle/instantclient-basic-linux.x64-19.22.0.0.0dbru.zip -d /opt/oracle \
+#       && unzip /opt/oracle/instantclient-sdk-linux.x64-19.22.0.0.0dbru.zip -d /opt/oracle \
+#       && rm -rf /opt/oracle/*.zip \
+#   ;fi
+
+# RUN if [ ${INSTALL_OCI8} = true ]; then \
+#   cd /opt/oracle \
+#       && ln -s /opt/oracle/instantclient_19_22/libclntsh.so.19.1 /opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/libclntsh.so \
+#       && ln -s /opt/oracle/instantclient_19_22/libclntshcore.so.19.1 /opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/libclntshcore.so \
+#       && ln -s /opt/oracle/instantclient_19_22/libocci.so.19.1 /opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/libocci.so \
+#   ;fi
+
+# RUN if [ ${INSTALL_OCI8} = true ]; then \
+#   apt-get update \
+#       && apt-get install --no-install-recommends -y \
+#           libaio-dev && \
+#   # Install PHP extensions
+#   echo "instantclient,/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/" | pecl install oci8-3.2.1; \
+#   && echo "extension=oci8.so" >> /etc/php/${VICDOCK_PHP_VERSION}/cli/php.ini \
+#   && php -m | grep -q 'oci8' \
+# ;fi
+
+# RUN if [ ${INSTALL_OCI8} = true ]; then \
+#   # Install wget
+#   apt-get update && apt-get install --no-install-recommends -y wget \
+#   # Install Oracle Instantclient
+#   && mkdir /opt/oracle \
+#       && cd /opt/oracle \
+#       && wget --no-check-certificate -c --header "Cookie: oraclelicense=accept-securebackup-cookie" ${ORACLE_INSTANT_CLIENT_MIRROR_BASIC} \
+#       && wget --no-check-certificate -c --header "Cookie: oraclelicense=accept-securebackup-cookie" ${ORACLE_INSTANT_CLIENT_MIRROR_SDK} \
+#       && unzip /opt/oracle/instantclient-basic-linux.x64-19.22.0.0.0dbru.zip -d /opt/oracle \
+#       && unzip /opt/oracle/instantclient-sdk-linux.x64-19.22.0.0.0dbru.zip -d /opt/oracle \
+#       && ln -s /opt/oracle/instantclient_19_22/libclntsh.so.19.1 /opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/libclntsh.so \
+#       && ln -s /opt/oracle/instantclient_19_22/libclntshcore.so.19.1 /opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/libclntshcore.so \
+#       && ln -s /opt/oracle/instantclient_19_22/libocci.so.19.1 /opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/libocci.so \
+#       && rm -rf /opt/oracle/*.zip \
+#   # Install PHP extensions deps
+#   && apt-get update \
+#       && apt-get install --no-install-recommends -y \
+#           libaio-dev && \
+#   # Install PHP extensions
+#   echo "instantclient,/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/" | pecl install oci8-3.2.1; \
+#   && echo "extension=oci8.so" >> /etc/php/${VICDOCK_PHP_VERSION}/cli/php.ini \
+#   && php -m | grep -q 'oci8' \
+# ;fi
+
+# USER root
+# ARG INSTALL_OCI8=false
+# ARG ORACLE_INSTANT_CLIENT_MIRROR=https://github.com/the-paulus/oracle-instantclient/raw/master/
+# ARG ORACLE_INSTANT_CLIENT_ARCH=x86_64
+# ARG ORACLE_INSTANT_CLIENT_MAJOR=18
+# ARG ORACLE_INSTANT_CLIENT_MINOR=3
+
+# ENV ORACLE_INSTANT_CLIENT_VERSION=${ORACLE_INSTANT_CLIENT_MAJOR}_${ORACLE_INSTANT_CLIENT_MINOR}
+# ENV LD_LIBRARY_PATH="/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}"
+# ENV OCI_HOME="/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}"
+# ENV OCI_LIB_DIR="/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}"
+# ENV OCI_INCLUDE_DIR="/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/sdk/include"
+# ENV OCI_VERSION=${ORACLE_INSTANT_CLIENT_MAJOR}
+
+# RUN if [ ${INSTALL_OCI8} = true ]; then \
+#   # Install wget
+#   apt-get update && apt-get install --no-install-recommends -y wget \
+#   # Install Oracle Instantclient
+#   && mkdir /opt/oracle \
+#       && cd /opt/oracle \
+#       && wget ${ORACLE_INSTANT_CLIENT_MIRROR}instantclient-basic-linux.${ORACLE_INSTANT_CLIENT_ARCH}-${ORACLE_INSTANT_CLIENT_VERSION}.zip \
+#       && wget ${ORACLE_INSTANT_CLIENT_MIRROR}instantclient-sdk-linux.${ORACLE_INSTANT_CLIENT_ARCH}-${ORACLE_INSTANT_CLIENT_VERSION}.zip \
+#       && unzip /opt/oracle/instantclient-basic-linux.${ORACLE_INSTANT_CLIENT_ARCH}-${ORACLE_INSTANT_CLIENT_VERSION}.zip -d /opt/oracle \
+#       && unzip /opt/oracle/instantclient-sdk-linux.${ORACLE_INSTANT_CLIENT_ARCH}-${ORACLE_INSTANT_CLIENT_VERSION}.zip -d /opt/oracle \
+#       && if [ ${OCI_VERSION} -lt 18 ] ; then ln -s /opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/libclntsh.so.${ORACLE_INSTANT_CLIENT_MAJOR}.${ORACLE_INSTANT_CLIENT_MINOR} /opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/libclntsh.so ; fi\
+#       && if [ ${OCI_VERSION} -lt 18 ] ; then ln -s /opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/libclntshcore.so.${ORACLE_INSTANT_CLIENT_MAJOR}.${ORACLE_INSTANT_CLIENT_MINOR} /opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/libclntshcore.so ; fi \
+#       && if [ ${OCI_VERSION} -lt 18 ] ; then ln -s /opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/libocci.so.${ORACLE_INSTANT_CLIENT_MAJOR}.${ORACLE_INSTANT_CLIENT_MINOR} /opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/libocci.so ; fi \
+#       && rm -rf /opt/oracle/*.zip \
+#   # Install PHP extensions deps
+#   && apt-get update \
+#       && apt-get install --no-install-recommends -y \
+#           libaio-dev && \
+#   # Install PHP extensions
+#   if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
+#   echo 'instantclient,/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/' | pecl install oci8-2.0.12; \
+#   elif [ $(php -r "echo PHP_MAJOR_VERSION;") = "7" ]; then \
+#   echo 'instantclient,/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/' | pecl install oci8-2.2.0; \
+#   elif [ $(php -r "echo PHP_VERSION_ID - PHP_RELEASE_VERSION;") = "80000" ]; then \
+#     echo "instantclient,/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/" | pecl install oci8-3.0.1; \
+#   elif [ $(php -r "echo PHP_MAJOR_VERSION . PHP_MINOR_VERSION;") = "81" ]; then \
+#     echo "instantclient,/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/" | pecl install oci8-3.2.1; \
+#   else \
+#     echo "instantclient,/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/" | pecl install oci8; \
+#   fi \
+#   && echo "extension=oci8.so" >> /etc/php/${VICDOCK_PHP_VERSION}/cli/php.ini \
+#   && php -m | grep -q 'oci8' \
+# ;fi
 
 ###########################################################################
 # PHP V8JS:
